@@ -83,6 +83,12 @@ install_mac_cleanup() {
     return
   fi
 
+  log "Preparing /usr/local/bin for mac-cleanup installer..."
+  sudo mkdir -p /usr/local/bin
+
+  # (опционально) чтобы /usr/local был доступен твоему юзеру, если нужно
+  # sudo chown -R "$(whoami)":staff /usr/local
+
   log "Installing mac-cleanup..."
   curl -fsSL https://raw.githubusercontent.com/mac-cleanup/mac-cleanup-sh/main/installer.sh \
     | bash -s install
