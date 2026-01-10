@@ -110,21 +110,28 @@ EOF
 }
 
 # -----------------------------
-# 2) Ensure PATH has ~/.local/bin
+# 2) Ensure PATH has ~/.local/bin (zsh/bash)
 # -----------------------------
 ensure_path_line() {
   local rc="$1"
-
-  # If file doesn't exist, create it
   touch "$rc"
 
-  # Add PATH line if missing
   if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$rc"; then
     {
       echo ""
       echo "# Added by install-greeting.sh"
       echo 'export PATH="$HOME/.local/bin:$PATH"'
     } >> "$rc"
+  fi
+}
+
+# -----------------------------
+# 2.1) Ensure PATH has ~/.local/bin (fish)  <-- КЛЮЧЕВО
+# -----------------------------
+ensure_fish_path() {
+  if command -v fish >/dev/null 2>&1; then
+    log "Ensuring ~/.local/bin is in fish_user_paths..."
+    fish -c 'contains "$HOME/.local/bin" $fish_user_paths; or set -U fish_user_paths $HOME/.local/bin $fish_user_paths'
   fi
 }
 
@@ -149,7 +156,6 @@ append_zsh_hook() {
   local zshrc="$HOME/.zshrc"
   touch "$zshrc"
 
-  # Avoid duplicate block
   if ! grep -q "BEGIN TOOLBOX GREETING" "$zshrc"; then
     cat >> "$zshrc" <<'EOF'
 
@@ -188,17 +194,19 @@ EOF
 main() {
   install_toolbox
 
-  # Ensure PATH for common shells
+  # PATH for shells
   ensure_path_line "$HOME/.zshrc"
   ensure_path_line "$HOME/.bashrc"
+  ensure_fish_path
 
+  # greetings
   install_fish_greeting
   append_zsh_hook
   append_bash_hook
 
   log "Done."
-  echo "Open a new terminal window/tab to see the greeting."
-  echo "Or run: toolbox"
+  echo "Close ALL terminal windows and open a new one."
+  echo "Greeting will appear automatically."
 }
 
 main "$@"
