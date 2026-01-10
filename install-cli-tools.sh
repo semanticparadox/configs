@@ -94,7 +94,6 @@ setup_fzf() {
 main() {
   install_homebrew
   install_brew_packages
-  install_mac_cleanup
   setup_fzf
 
   log "CLI tools installation complete."
