@@ -47,7 +47,7 @@ TOOLS=(
   "vd|visidata (vd)|tabular data TUI"
   "nano|nano|editor"
   "nvim|neovim (nvim)|editor"
-  "lazyssh|lazyssh|SSH UI"
+  "sshing|sshing|SSH UI"
   "mac-cleanup|mac-cleanup|system cleanup"
 )
 
