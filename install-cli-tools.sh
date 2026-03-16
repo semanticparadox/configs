@@ -57,7 +57,7 @@ BREW_PACKAGES=(
   visidata
   nano
   neovim
-  lazyssh
+  sshing
   mac-cleanup-py
 )
 
