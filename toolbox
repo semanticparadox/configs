@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Only print in interactive terminals
+[[ -t 1 ]] || exit 0
+
+bold="$(tput bold 2>/dev/null || true)"
+dim="$(tput dim 2>/dev/null || true)"
+reset="$(tput sgr0 2>/dev/null || true)"
+green="$(tput setaf 2 2>/dev/null || true)"
+red="$(tput setaf 1 2>/dev/null || true)"
+cyan="$(tput setaf 6 2>/dev/null || true)"
+
+TOOLS=(
+  "btop|btop|system monitor"
+  "eza|eza|better ls"
+  "bat|bat|better cat"
+  "fd|fd|better find"
+  "rg|ripgrep (rg)|fast grep"
+  "nmap|nmap|network scanner"
+  "bandwhich|bandwhich|per-process bandwidth"
+  "zoxide|zoxide|smart cd (z)"
+  "fzf|fzf|fuzzy finder"
+  "whois|whois|whois lookup"
+  "pv|pv|pipe progress"
+  "tcpdump|tcpdump|packet capture"
+  "curlie|curlie|curl + friendly UX"
+  "duf|duf|disk usage"
+  "gping|gping|ping with graph"
+  "dust|dust|disk usage (tree)"
+  "yazi|yazi|TUI file manager"
+  "vd|visidata (vd)|tabular data TUI"
+  "nano|nano|editor"
+  "nvim|neovim (nvim)|editor"
+  "sshs|sshs|SSH host manager (TUI)"
+  "mo|mole (mo)|deep clean & optimize"
+  "gh|gh (GitHub CLI)|GitHub from terminal"
+  "claude|claude (Claude Code)|Anthropic AI coding CLI"
+  "agy|agy (Antigravity)|Google Antigravity AI CLI"
+)
+
+# ---- usage counter store (bash 3.2 safe: no associative arrays) ----
+STATE="$HOME/.local/state/toolbox"
+LOG="$STATE/usage.log"
+COUNTS="$STATE/counts.tsv"
+mkdir -p "$STATE"; : >>"$LOG"; : >>"$COUNTS"
+
+# fold new log entries into counts (alias-mapped in awk), truncate log
+if [[ -s "$LOG" ]]; then
+  awk -v CF="$COUNTS" '
+    BEGIN{
+      a["ls"]="eza"; a["ll"]="eza"; a["la"]="eza"; a["lt"]="eza";
+      a["cat"]="bat"; a["grep"]="rg"; a["find"]="fd";
+      a["vim"]="nvim"; a["vi"]="nvim"; a["top"]="btop";
+      a["df"]="duf"; a["du"]="dust"; a["z"]="zoxide"; a["mole"]="mo";
+    }
+    FILENAME==CF { if($1!="" && $2!="") c[$1]=$2; next }   # existing counts file
+    { w=$1; if(w==""){next} if(w in a) w=a[w]; c[w]++ }    # usage log
+    END{ for(k in c) printf "%s\t%s\n", k, c[k] }
+  ' "$COUNTS" "$LOG" >"$COUNTS.tmp" && mv "$COUNTS.tmp" "$COUNTS"
+  : >"$LOG"
+fi
+
+count_of() { awk -v c="$1" '$1==c{print $2; f=1} END{if(!f) print 0}' "$COUNTS"; }
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+main() {
+  local installed=() missing=()
+  local entry cmd label hint
+  for entry in "${TOOLS[@]}"; do
+    IFS='|' read -r cmd label hint <<<"$entry"
+    if have_cmd "$cmd"; then installed+=("$entry"); else missing+=("$entry"); fi
+  done
+
+  echo
+  echo "${bold}${cyan}CLI Toolbox${reset} ${dim}(used-count asc -> favorites at bottom)${reset}"
+  echo "${dim}Run again: toolbox${reset}"
+  echo
+
+  if ((${#installed[@]})); then
+    echo "${bold}${green}Installed${reset}"
+    printf "%-16s %-26s %-30s %s\n" "Command" "Utility" "Hint" "Used"
+    printf "%-16s %-26s %-30s %s\n" "------" "-------" "----" "----"
+    local rows=() n
+    for entry in "${installed[@]}"; do
+      IFS='|' read -r cmd label hint <<<"$entry"
+      n="$(count_of "$cmd")"
+      rows+=("$(printf '%s\t%s\t%s\t%s' "$n" "$cmd" "$label" "$hint")")
+    done
+    while IFS=$'\t' read -r n cmd label hint; do
+      printf "%-16s %-26s %-30s %s\n" "$cmd" "$label" "$hint" "${n}x"
+    done < <(printf '%s\n' "${rows[@]}" | sort -t$'\t' -k1,1n -k2,2)
+    echo
+  else
+    echo "${red}No tools installed.${reset}"; echo
+  fi
+
+  if ((${#missing[@]})); then
+    echo "${bold}${red}Missing${reset}"
+    for entry in "${missing[@]}"; do
+      IFS='|' read -r cmd label hint <<<"$entry"
+      printf "%-16s %-26s %s\n" "$cmd" "$label" "$hint"
+    done
+    echo
+  fi
+}
+
+main "$@"

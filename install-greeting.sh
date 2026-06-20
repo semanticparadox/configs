@@ -1,115 +1,63 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-log() { printf "\n\033[1m%s\033[0m\n" "$*"; }
+log()  { printf "\n\033[1m%s\033[0m\n" "$*"; }
+warn() { printf "\n\033[33m[WARN]\033[0m %s\n" "$*"; }
+
+RAW="https://raw.githubusercontent.com/semanticparadox/configs/main"
 
 # -----------------------------
-# 1) Install toolbox command
+# 1) Install toolbox command (separate file in this repo; supports usage counter)
 # -----------------------------
 install_toolbox() {
   log "Installing toolbox command..."
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/state/toolbox"
 
-  mkdir -p "$HOME/.local/bin"
-
-  cat > "$HOME/.local/bin/toolbox" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Only print in interactive terminals
-[[ -t 1 ]] || exit 0
-
-bold="$(tput bold 2>/dev/null || true)"
-dim="$(tput dim 2>/dev/null || true)"
-reset="$(tput sgr0 2>/dev/null || true)"
-
-green="$(tput setaf 2 2>/dev/null || true)"
-red="$(tput setaf 1 2>/dev/null || true)"
-cyan="$(tput setaf 6 2>/dev/null || true)"
-
-TOOLS=(
-  "btop|btop|system monitor"
-  "eza|eza|better ls"
-  "bat|bat|better cat"
-  "fd|fd|better find"
-  "rg|ripgrep (rg)|fast grep"
-  "nmap|nmap|network scanner"
-  "bandwhich|bandwhich|per-process bandwidth"
-  "zoxide|zoxide|smart cd (z)"
-  "fzf|fzf|fuzzy finder"
-  "whois|whois|whois lookup"
-  "pv|pv|pipe progress"
-  "tcpdump|tcpdump|packet capture"
-  "curlie|curlie|curl + friendly UX"
-  "duf|duf|disk usage"
-  "gping|gping|ping with graph"
-  "dust|dust|disk usage (tree)"
-  "yazi|yazi|TUI file manager"
-  "vd|visidata (vd)|tabular data TUI"
-  "nano|nano|editor"
-  "nvim|neovim (nvim)|editor"
-  "sshs|sshs|SSH host manager (TUI)"
-  "mo|mole (mo)|deep clean & optimize"
-  "gh|gh (GitHub CLI)|GitHub from terminal"
-  "claude|claude (Claude Code)|Anthropic AI coding CLI"
-  "agy|agy (Antigravity)|Google Antigravity AI CLI"
-)
-
-have_cmd() { command -v "$1" >/dev/null 2>&1; }
-
-print_header() {
-  echo
-  echo "${bold}${cyan}CLI Toolbox${reset} ${dim}(checked on launch)${reset}"
-  echo "${dim}Run again anytime: toolbox${reset}"
-  echo
-}
-
-print_section() {
-  local title="$1"
-  local color="$2"
-  shift 2
-
-  echo "${bold}${color}${title}${reset}"
-  printf "%-18s %-28s %s\n" "Command" "Utility" "Hint"
-  printf "%-18s %-28s %s\n" "------" "-------" "----"
-
-  for line in "$@"; do
-    IFS='|' read -r cmd label hint <<<"$line"
-    printf "%-18s %-28s %s\n" "$cmd" "$label" "$hint"
-  done
-  echo
-}
-
-main() {
-  local installed=()
-  local missing=()
-
-  for entry in "${TOOLS[@]}"; do
-    IFS='|' read -r cmd label hint <<<"$entry"
-    if have_cmd "$cmd"; then
-      installed+=("$entry")
-    else
-      missing+=("$entry")
-    fi
-  done
-
-  print_header
-
-  if ((${#installed[@]})); then
-    print_section "Installed" "${green}" "${installed[@]}"
+  if curl -fsSL "$RAW/toolbox" -o "$HOME/.local/bin/toolbox.tmp"; then
+    mv "$HOME/.local/bin/toolbox.tmp" "$HOME/.local/bin/toolbox"
+    chmod +x "$HOME/.local/bin/toolbox"
   else
-    echo "${red}No tools from the list are installed.${reset}"
-    echo
-  fi
-
-  if ((${#missing[@]})); then
-    print_section "Missing" "${red}" "${missing[@]}"
+    warn "could not download toolbox; keeping existing copy"
+    rm -f "$HOME/.local/bin/toolbox.tmp"
   fi
 }
 
-main "$@"
+# -----------------------------
+# 1.1) Usage-tracking hooks: log each launched command's first word.
+#      toolbox aggregates these into a per-tool counter and sorts the
+#      Installed list by count (favorites at the bottom).
+# -----------------------------
+install_track_hooks() {
+  log "Installing usage-tracking hooks (zsh/fish/bash)..."
+  mkdir -p "$HOME/.local/state/toolbox" "$HOME/.config/fish/conf.d"
+
+  cat > "$HOME/.config/fish/conf.d/toolbox-track.fish" <<'EOF'
+function __toolbox_track --on-event fish_preexec
+    set -l w (string split ' ' -- $argv)[1]
+    test -n "$w"; and echo $w >> $HOME/.local/state/toolbox/usage.log 2>/dev/null
+end
 EOF
 
-  chmod +x "$HOME/.local/bin/toolbox"
+  if ! grep -q "BEGIN TOOLBOX TRACK" "$HOME/.zshrc" 2>/dev/null; then
+    cat >> "$HOME/.zshrc" <<'EOF'
+
+# BEGIN TOOLBOX TRACK
+autoload -Uz add-zsh-hook 2>/dev/null
+__toolbox_track() { print -r -- "${1%% *}" >> "$HOME/.local/state/toolbox/usage.log" 2>/dev/null }
+add-zsh-hook preexec __toolbox_track 2>/dev/null
+# END TOOLBOX TRACK
+EOF
+  fi
+
+  if ! grep -q "BEGIN TOOLBOX TRACK" "$HOME/.bashrc" 2>/dev/null; then
+    cat >> "$HOME/.bashrc" <<'EOF'
+
+# BEGIN TOOLBOX TRACK
+__toolbox_track() { case "$BASH_COMMAND" in __toolbox_track*|toolbox|*PROMPT*) return;; esac; echo "${BASH_COMMAND%% *}" >> "$HOME/.local/state/toolbox/usage.log" 2>/dev/null; }
+trap '__toolbox_track' DEBUG
+# END TOOLBOX TRACK
+EOF
+  fi
 }
 
 # -----------------------------
@@ -153,7 +101,7 @@ ensure_path_line() {
 }
 
 # -----------------------------
-# 2.1) Ensure PATH has ~/.local/bin (fish)  <-- КЛЮЧЕВО
+# 2.1) Ensure PATH has ~/.local/bin (fish)
 # -----------------------------
 ensure_fish_path() {
   if command -v fish >/dev/null 2>&1; then
@@ -163,7 +111,7 @@ ensure_fish_path() {
 }
 
 # -----------------------------
-# 3) Hook into shells
+# 3) Greeting hooks (show toolbox on shell start)
 # -----------------------------
 install_fish_greeting() {
   log "Configuring fish greeting..."
@@ -220,6 +168,7 @@ EOF
 
 main() {
   install_toolbox
+  install_track_hooks
 
   # PATH for shells
   ensure_zprofile
@@ -234,7 +183,7 @@ main() {
 
   log "Done."
   echo "Close ALL terminal windows and open a new one."
-  echo "Greeting will appear automatically."
+  echo "Greeting (with usage counter) appears automatically."
 }
 
 main "$@"
