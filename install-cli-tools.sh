@@ -57,9 +57,11 @@ BREW_PACKAGES=(
   visidata
   nano
   neovim
-  sshing
-  mac-cleanup-py
+  sshs
+  mole
 )
+# NOTE: gh (GitHub CLI) is installed separately — Homebrew has no bottle on
+# macOS 26 beta and would build from source / hang. See install-gh below.
 
 install_brew_packages() {
   log "Installing Homebrew packages..."
@@ -70,7 +72,7 @@ install_brew_packages() {
       echo "✔ $pkg already installed"
     else
       echo "→ installing $pkg"
-      brew install "$pkg"
+      brew install "$pkg" || warn "failed to install $pkg (skipped)"
     fi
   done
 }

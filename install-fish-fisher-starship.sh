@@ -50,16 +50,17 @@ setup_fish_shell() {
   fi
 }
 
-# --- Oh My Fish ---
-install_omf() {
-  if [[ -d "$HOME/.local/share/omf" ]]; then
-    log "Oh My Fish already installed."
+# --- Fisher (plugin manager) ---
+# Oh My Fish is effectively unmaintained; Fisher is the current standard
+# plugin manager for fish 3.x/4.x.
+install_fisher() {
+  if fish -c 'type -q fisher' 2>/dev/null; then
+    log "Fisher already installed."
     return
   fi
 
-  log "Installing Oh My Fish..."
-  curl -fsSL https://raw.githubusercontent.com/oh-my-fish/oh-my-fish/master/bin/install \
-    | fish
+  log "Installing Fisher..."
+  fish -c 'curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher'
 }
 
 # --- fish config ---
@@ -80,15 +81,12 @@ if type -q starship
   starship init fish | source
 end
 
-# ---- Basic aliases (can be extended later) ----
-if type -q eza
-  alias ls="eza"
-  alias ll="eza -lah"
+# ---- zoxide (smart cd: `z`) ----
+if type -q zoxide
+  zoxide init fish | source
 end
 
-if type -q bat
-  alias cat="bat"
-end
+# Aliases live in ~/.config/fish/conf.d/aliases.fish (see install-aliases.sh)
 EOF
 }
 
@@ -97,11 +95,11 @@ install_greeting() {
   cat > "$HOME/.config/fish/functions/fish_greeting.fish" <<'EOF'
 function fish_greeting
   echo
-  echo "fish + Oh My Fish + Starship ready."
+  echo "fish + Fisher + Starship ready."
   echo "Useful commands:"
-  echo "  omf update        - update Oh My Fish"
-  echo "  omf install NAME - install OMF plugin"
-  echo "  starship explain - explain current prompt"
+  echo "  fisher update         - update plugins"
+  echo "  fisher install NAME   - install a fish plugin"
+  echo "  starship explain      - explain current prompt"
   echo
 end
 EOF
@@ -111,7 +109,7 @@ main() {
   install_homebrew
   install_packages
   setup_fish_shell
-  install_omf
+  install_fisher
   install_fish_config
   install_greeting
 

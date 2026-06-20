@@ -75,6 +75,10 @@ alias gcat="/bin/cat"
 # if type -q zoxide
 #   zoxide init fish | source
 # end
+
+# ---- Modus terminal theme switch (Alacritty) ----
+alias modus-light="cp ~/.config/alacritty/themes/modus_operandi_tinted.toml ~/.config/alacritty/themes/current.toml"
+alias modus-dark="cp ~/.config/alacritty/themes/modus_vivendi.toml ~/.config/alacritty/themes/current.toml"
 EOF
 }
 
@@ -104,6 +108,10 @@ alias gcat='/bin/cat'
 # command -v curlie >/dev/null 2>&1 && alias curl='curlie'
 
 # zoxide: recommended as separate command `z`, not replacing `cd`
+
+# ---- Modus terminal theme switch (Alacritty) ----
+alias modus-light='cp ~/.config/alacritty/themes/modus_operandi_tinted.toml ~/.config/alacritty/themes/current.toml'
+alias modus-dark='cp ~/.config/alacritty/themes/modus_vivendi.toml ~/.config/alacritty/themes/current.toml'
 EOF
 }
 
@@ -133,6 +141,10 @@ alias gcat='/bin/cat'
 # command -v curlie >/dev/null 2>&1 && alias curl='curlie'
 
 # zoxide: recommended as separate command `z`, not replacing `cd`
+
+# ---- Modus terminal theme switch (Alacritty) ----
+alias modus-light='cp ~/.config/alacritty/themes/modus_operandi_tinted.toml ~/.config/alacritty/themes/current.toml'
+alias modus-dark='cp ~/.config/alacritty/themes/modus_vivendi.toml ~/.config/alacritty/themes/current.toml'
 EOF
 }
 

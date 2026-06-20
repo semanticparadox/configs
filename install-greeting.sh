@@ -47,8 +47,11 @@ TOOLS=(
   "vd|visidata (vd)|tabular data TUI"
   "nano|nano|editor"
   "nvim|neovim (nvim)|editor"
-  "sshing|sshing|SSH UI"
-  "mac-cleanup|mac-cleanup|system cleanup"
+  "sshs|sshs|SSH host manager (TUI)"
+  "mo|mole (mo)|deep clean & optimize"
+  "gh|gh (GitHub CLI)|GitHub from terminal"
+  "claude|claude (Claude Code)|Anthropic AI coding CLI"
+  "agy|agy (Antigravity)|Google Antigravity AI CLI"
 )
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
@@ -110,6 +113,30 @@ EOF
 }
 
 # -----------------------------
+# 2.0) Ensure Homebrew + ~/.local/bin in zsh login PATH (macOS)
+#      Without this, `brew`, `claude`, `agy` are NOT on PATH in a fresh
+#      Terminal — the original config only wired Homebrew into fish.
+# -----------------------------
+ensure_zprofile() {
+  local zprofile="$HOME/.zprofile"
+  touch "$zprofile"
+
+  if ! grep -q "brew shellenv" "$zprofile"; then
+    log "Wiring Homebrew + ~/.local/bin into ~/.zprofile..."
+    cat >> "$zprofile" <<'EOF'
+
+# Added by install-greeting.sh
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+EOF
+  fi
+}
+
+# -----------------------------
 # 2) Ensure PATH has ~/.local/bin (zsh/bash)
 # -----------------------------
 ensure_path_line() {
@@ -131,7 +158,7 @@ ensure_path_line() {
 ensure_fish_path() {
   if command -v fish >/dev/null 2>&1; then
     log "Ensuring ~/.local/bin is in fish_user_paths..."
-    fish -c 'contains "$HOME/.local/bin" $fish_user_paths; or set -U fish_user_paths $HOME/.local/bin $fish_user_paths'
+    fish -c 'contains "$HOME/.local/bin" $fish_user_paths; or set -U fish_user_paths $HOME/.local/bin $fish_user_paths' || true
   fi
 }
 
@@ -195,6 +222,7 @@ main() {
   install_toolbox
 
   # PATH for shells
+  ensure_zprofile
   ensure_path_line "$HOME/.zshrc"
   ensure_path_line "$HOME/.bashrc"
   ensure_fish_path
